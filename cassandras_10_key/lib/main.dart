@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'material_text_button.dart';
 
@@ -34,33 +35,23 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  final _scaffold = GlobalKey<ScaffoldState>();
+
   String _currentDisplay = "0";
 
   double get _currentValue => double.parse(_currentDisplay);
-  double? _lastValue;
+  double? _runningTotal;
 
   bool _lastActionWasAFunction = false;
 
-  final List<String> _history = [
-    "1 +",
-    "2 +",
-    "3 -",
-    "4 +",
-    "1 +",
-    "2 +",
-    "3 -",
-    "4 +",
-    "1 +",
-    "2 +",
-    "3 -",
-    "4 +"
-  ];
+  final List<String> _history = [];
 
   @override
   Widget build(BuildContext context) {
     final clearButtons = [
-      MaterialTextButton("C", warn: true, onPressed: () => _clearNumber(false)),
-      MaterialTextButton("CE", warn: true, onPressed: () => _clearNumber(true)),
+      MaterialTextButton("C", warn: true, onPressed: () => _clearNumber(true)),
+      MaterialTextButton("CE",
+          warn: true, onPressed: () => _clearNumber(false)),
       MaterialTextButton("←", warn: true, onPressed: () => _backSpace()),
     ];
 
@@ -99,6 +90,7 @@ class _MyHomePageState extends State<MyHomePage> {
       if (i % 3 == 0) {
         row = Row(
           mainAxisAlignment: MainAxisAlignment.start,
+          // ignore: prefer_const_literals_to_create_immutables
           children: [],
         );
         rows.add(row);
@@ -108,6 +100,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
 
     return Scaffold(
+      key: _scaffold,
       appBar: AppBar(
         title: const Text('Cassandra\'s 10-Key'),
       ),
@@ -126,7 +119,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       .map<Widget>(
                         (text) => Padding(
                           padding: const EdgeInsets.all(8.0),
-                          child: Text(
+                          child: SelectableText(
                             text,
                             style: const TextStyle(
                               fontSize: 16,
@@ -142,22 +135,38 @@ class _MyHomePageState extends State<MyHomePage> {
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Container(
-                  decoration: const BoxDecoration(
-                    border: Border.symmetric(
-                      horizontal: BorderSide(color: Colors.black),
+                GestureDetector(
+                  onLongPress: () async => await _onLongPressDisplay(context),
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      border: Border.symmetric(
+                        horizontal: BorderSide(color: Colors.grey),
+                      ),
                     ),
-                  ),
-                  padding: const EdgeInsets.all(4.0),
-                  margin: const EdgeInsets.only(top: 8.0),
-                  child: Text(
-                    _currentDisplay,
-                    textAlign: TextAlign.end,
-                    style: const TextStyle(fontSize: 24.0),
+                    padding: const EdgeInsets.all(4.0),
+                    margin: const EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      _currentDisplay,
+                      textAlign: TextAlign.end,
+                      style: const TextStyle(fontSize: 24.0),
+                    ),
                   ),
                 ),
                 Column(
-                  children: [...rows],
+                  children: [
+                    ...rows,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: MaterialTextButton(
+                            "=",
+                            accent: true,
+                            onPressed: () => _equals(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 )
               ],
             ),
@@ -185,7 +194,8 @@ class _MyHomePageState extends State<MyHomePage> {
       _currentDisplay = "0";
 
       if (andLastValue) {
-        _lastValue = null;
+        _runningTotal = null;
+        _history.add("-----------------------");
       }
     });
   }
@@ -200,15 +210,37 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  _equals() {
+    if (_runningTotal == null) return;
+
+    var historyDisplay = _runningTotal.toString();
+
+    if (historyDisplay.endsWith(".0")) {
+      historyDisplay = historyDisplay.substring(0, historyDisplay.length - 2);
+    }
+
+    setState(() {
+      _history.add("$historyDisplay T");
+    });
+  }
+
   _add() {
     setState(() {
-      if (_lastValue == null) {
-        _lastValue = _currentValue;
+      // history
+      if (_currentDisplay.startsWith("-")) {
+        _history.add("${_currentDisplay.substring(1)} -");
       } else {
-        _lastValue = _currentValue + _lastValue!;
+        _history.add("$_currentDisplay +");
       }
 
-      _currentDisplay = _lastValue.toString();
+      // running total
+      if (_runningTotal == null) {
+        _runningTotal = _currentValue;
+      } else {
+        _runningTotal = _currentValue + _runningTotal!;
+      }
+
+      _currentDisplay = _runningTotal.toString();
 
       if (_currentDisplay.endsWith(".0")) {
         _currentDisplay = _currentDisplay.substring(
@@ -222,7 +254,44 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   _subtract() {
-    _currentDisplay = "-$_currentDisplay";
+    if (_currentDisplay.startsWith("-")) {
+      _currentDisplay = _currentDisplay.substring(1);
+    } else {
+      _currentDisplay = "-$_currentDisplay";
+    }
+
     _add();
+  }
+
+  _onLongPressDisplay(BuildContext context) async {
+    final clipboard = await Clipboard.getData("text/plain");
+
+    if (!mounted) return;
+
+    showModalBottomSheet(
+        context: context,
+        constraints: const BoxConstraints.tightFor(height: 150),
+        builder: (context) {
+          return Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              MaterialTextButton("Copy", onPressed: () async {
+                Navigator.pop(context);
+                await Clipboard.setData(ClipboardData(text: _currentDisplay));
+              }),
+              MaterialTextButton(
+                "Paste",
+                onPressed: clipboard?.text == null ||
+                        double.tryParse(clipboard!.text!) == null
+                    ? null
+                    : () {
+                        setState(() => _currentDisplay = clipboard.text!);
+                        Navigator.pop(context);
+                      },
+              ),
+            ],
+          );
+        });
   }
 }
