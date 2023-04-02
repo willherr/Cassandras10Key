@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'material_text_button.dart';
+
 void main() {
   runApp(const MyApp());
 }
@@ -7,109 +9,220 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Cassandra\'s 10-Key',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
         primarySwatch: Colors.blue,
+        colorScheme: ColorScheme.fromSwatch(
+          primarySwatch: Colors.blue,
+          accentColor: Colors.green,
+          errorColor: Colors.red,
+        ),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+  const MyHomePage({super.key});
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+  String _currentDisplay = "0";
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
+  double get _currentValue => double.parse(_currentDisplay);
+  double? _lastValue;
+
+  bool _lastActionWasAFunction = false;
+
+  final List<String> _history = [
+    "1 +",
+    "2 +",
+    "3 -",
+    "4 +",
+    "1 +",
+    "2 +",
+    "3 -",
+    "4 +",
+    "1 +",
+    "2 +",
+    "3 -",
+    "4 +"
+  ];
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    final clearButtons = [
+      MaterialTextButton("C", warn: true, onPressed: () => _clearNumber(false)),
+      MaterialTextButton("CE", warn: true, onPressed: () => _clearNumber(true)),
+      MaterialTextButton("←", warn: true, onPressed: () => _backSpace()),
+    ];
+
+    final functionButtons = [
+      Container(),
+      MaterialTextButton("-", accent: true, onPressed: () => _subtract()),
+      MaterialTextButton("+", accent: true, onPressed: () => _add()),
+    ];
+
+    final numberButtons = [
+      // numbers
+      MaterialTextButton("7", onPressed: () => _appendToNumber('7')),
+      MaterialTextButton("8", onPressed: () => _appendToNumber('8')),
+      MaterialTextButton("9", onPressed: () => _appendToNumber('9')),
+      MaterialTextButton("4", onPressed: () => _appendToNumber('4')),
+      MaterialTextButton("5", onPressed: () => _appendToNumber('5')),
+      MaterialTextButton("6", onPressed: () => _appendToNumber('6')),
+      MaterialTextButton("1", onPressed: () => _appendToNumber('1')),
+      MaterialTextButton("2", onPressed: () => _appendToNumber('2')),
+      MaterialTextButton("3", onPressed: () => _appendToNumber('3')),
+      Container(),
+      MaterialTextButton("0", onPressed: () => _appendToNumber('0')),
+      MaterialTextButton(".", onPressed: () => _appendToNumber('.')),
+    ];
+
+    final buttons = [
+      ...clearButtons,
+      ...functionButtons,
+      ...numberButtons,
+    ];
+
+    final rows = <Row>[];
+    Row row = Row();
+
+    for (var i = 0; i < buttons.length; i++) {
+      if (i % 3 == 0) {
+        row = Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [],
+        );
+        rows.add(row);
+      }
+
+      row.children.add(Expanded(child: buttons[i]));
+    }
+
     return Scaffold(
       appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: const Text('Cassandra\'s 10-Key'),
       ),
       body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
         child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                reverse: true,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: _history
+                      .map<Widget>(
+                        (text) => Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(
+                            text,
+                            style: const TextStyle(
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+            Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  decoration: const BoxDecoration(
+                    border: Border.symmetric(
+                      horizontal: BorderSide(color: Colors.black),
+                    ),
+                  ),
+                  padding: const EdgeInsets.all(4.0),
+                  margin: const EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    _currentDisplay,
+                    textAlign: TextAlign.end,
+                    style: const TextStyle(fontSize: 24.0),
+                  ),
+                ),
+                Column(
+                  children: [...rows],
+                )
+              ],
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
+  }
+
+  _appendToNumber(String value) {
+    if (_lastActionWasAFunction) _clearNumber(false);
+
+    if (value == "." && _currentDisplay.contains(".")) return;
+
+    if (_currentDisplay == "0" && value != ".") {
+      _currentDisplay = "";
+    }
+
+    setState(() => _currentDisplay += value);
+  }
+
+  _clearNumber(bool andLastValue) {
+    setState(() {
+      _lastActionWasAFunction = false;
+      _currentDisplay = "0";
+
+      if (andLastValue) {
+        _lastValue = null;
+      }
+    });
+  }
+
+  _backSpace() {
+    if (_currentDisplay == "0" || _lastActionWasAFunction) return;
+
+    setState(() {
+      _currentDisplay =
+          _currentDisplay.substring(0, _currentDisplay.length - 1);
+      if (_currentDisplay.isEmpty) _currentDisplay = "0";
+    });
+  }
+
+  _add() {
+    setState(() {
+      if (_lastValue == null) {
+        _lastValue = _currentValue;
+      } else {
+        _lastValue = _currentValue + _lastValue!;
+      }
+
+      _currentDisplay = _lastValue.toString();
+
+      if (_currentDisplay.endsWith(".0")) {
+        _currentDisplay = _currentDisplay.substring(
+          0,
+          _currentDisplay.length - 2,
+        );
+      }
+
+      _lastActionWasAFunction = true;
+    });
+  }
+
+  _subtract() {
+    _currentDisplay = "-$_currentDisplay";
+    _add();
   }
 }
