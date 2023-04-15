@@ -1,6 +1,6 @@
 {
-    "name": "cassandras_10_key",
-    "short_name": "cassandras_10_key",
+    "name": "10_key_adding_machine",
+    "short_name": "10_key_adding_machine",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

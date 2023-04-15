@@ -1,6 +1,10 @@
-# cassandras_10_key
+# 10_key_adding_machine
 
 A new Flutter project.
+
+## Logo Attribution
+This link is required for attribution of the logo.
+<a href="https://www.flaticon.com/free-icons/adding-machine" title="adding machine icons">Adding machine icons created by Freepik - Flaticon</a>
 
 ## Getting Started
 

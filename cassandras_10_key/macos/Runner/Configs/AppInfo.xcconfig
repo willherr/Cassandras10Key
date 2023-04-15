@@ -5,10 +5,10 @@
 // 'flutter create' template.
 
 // The application's name. By default this is also the title of the Flutter window.
-PRODUCT_NAME = cassandras_10_key
+PRODUCT_NAME = 10_key_adding_machine
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.example.cassandras10Key
+PRODUCT_BUNDLE_IDENTIFIER = dev.will_i_am.adding_machine
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2023 com.example. All rights reserved.

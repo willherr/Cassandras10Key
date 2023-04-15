@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "cassandras_10_key" "\0"
+            VALUE "FileDescription", "10_key_adding_machine" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "cassandras_10_key" "\0"
+            VALUE "InternalName", "10_key_adding_machine" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2023 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "cassandras_10_key.exe" "\0"
-            VALUE "ProductName", "cassandras_10_key" "\0"
+            VALUE "OriginalFilename", "10_key_adding_machine.exe" "\0"
+            VALUE "ProductName", "10_key_adding_machine" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

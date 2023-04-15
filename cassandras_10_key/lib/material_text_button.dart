@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 
 class MaterialTextButton extends StatelessWidget {
-  const MaterialTextButton(
-    this.text, {
-    super.key,
-    required this.onPressed,
-    this.primary = true,
-    this.accent = false,
-    this.warn = false,
-  });
+  const MaterialTextButton(this.text,
+      {super.key,
+      required this.onPressed,
+      this.primary = true,
+      this.accent = false,
+      this.warn = false,
+      this.fontSize = 26});
 
   final bool primary;
   final bool accent;
@@ -16,6 +15,7 @@ class MaterialTextButton extends StatelessWidget {
 
   final String text;
   final Function? onPressed;
+  final double? fontSize;
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +37,7 @@ class MaterialTextButton extends StatelessWidget {
       onPressed: onPressed == null ? null : () => onPressed!(),
       child: Padding(
         padding: const EdgeInsets.all(8.0),
-        child: Text(text, style: TextStyle(color: color, fontSize: 18)),
+        child: Text(text, style: TextStyle(color: color, fontSize: fontSize)),
       ),
     );
   }

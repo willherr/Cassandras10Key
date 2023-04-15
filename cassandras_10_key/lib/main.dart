@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'material_text_button.dart';
 
@@ -13,7 +14,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Cassandra\'s 10-Key',
+      title: '10-Key Calculator',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         colorScheme: ColorScheme.fromSwatch(
@@ -44,20 +45,27 @@ class _MyHomePageState extends State<MyHomePage> {
 
   bool _lastActionWasAFunction = false;
 
-  final List<String> _history = [];
+  final List<Widget> _history = [];
 
   @override
   Widget build(BuildContext context) {
     final clearButtons = [
-      MaterialTextButton("C", warn: true, onPressed: () => _clearNumber(true)),
-      MaterialTextButton("CE",
-          warn: true, onPressed: () => _clearNumber(false)),
+      MaterialTextButton(
+        "C",
+        warn: true,
+        onPressed: () => _clearNumber(true),
+      ),
+      MaterialTextButton(
+        "CE",
+        warn: true,
+        onPressed: () => _clearNumber(false),
+      ),
       MaterialTextButton("←", warn: true, onPressed: () => _backSpace()),
     ];
 
     final functionButtons = [
       Container(),
-      MaterialTextButton("-", accent: true, onPressed: () => _subtract()),
+      MaterialTextButton("—", accent: true, onPressed: () => _subtract()),
       MaterialTextButton("+", accent: true, onPressed: () => _add()),
     ];
 
@@ -101,76 +109,66 @@ class _MyHomePageState extends State<MyHomePage> {
 
     return Scaffold(
       key: _scaffold,
-      appBar: AppBar(
-        title: const Text('Cassandra\'s 10-Key'),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                reverse: true,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: _history
-                      .map<Widget>(
-                        (text) => Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: SelectableText(
-                            text,
-                            style: const TextStyle(
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ),
-              ),
-            ),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                GestureDetector(
-                  onLongPress: () async => await _onLongPressDisplay(context),
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      border: Border.symmetric(
-                        horizontal: BorderSide(color: Colors.grey),
-                      ),
-                    ),
-                    padding: const EdgeInsets.all(4.0),
-                    margin: const EdgeInsets.only(top: 8.0),
-                    child: Text(
-                      _currentDisplay,
-                      textAlign: TextAlign.end,
-                      style: const TextStyle(fontSize: 24.0),
+      body: SafeArea(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onLongPress: () => _onLongPressDisplay(context, true),
+                  child: SingleChildScrollView(
+                    reverse: true,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: _history,
                     ),
                   ),
                 ),
-                Column(
-                  children: [
-                    ...rows,
-                    Row(
-                      children: [
-                        Expanded(
-                          child: MaterialTextButton(
-                            "=",
-                            accent: true,
-                            onPressed: () => _equals(),
-                          ),
+              ),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  GestureDetector(
+                    onLongPress: () => _onLongPressDisplay(context, false),
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        border: Border.symmetric(
+                          horizontal: BorderSide(color: Colors.grey),
                         ),
-                      ],
+                      ),
+                      padding: const EdgeInsets.all(4.0),
+                      margin: const EdgeInsets.only(top: 8.0),
+                      child: Text(
+                        _currentDisplay,
+                        textAlign: TextAlign.end,
+                        style: const TextStyle(fontSize: 32.0),
+                      ),
                     ),
-                  ],
-                )
-              ],
-            ),
-          ],
+                  ),
+                  Column(
+                    children: [
+                      ...rows,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: MaterialTextButton(
+                              "=",
+                              accent: true,
+                              onPressed: () => _equals(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  )
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -195,7 +193,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
       if (andLastValue) {
         _runningTotal = null;
-        _history.add("-----------------------");
+        _addHistory(
+            const Divider(color: Colors.red, indent: 50, endIndent: 50));
       }
     });
   }
@@ -220,7 +219,21 @@ class _MyHomePageState extends State<MyHomePage> {
     }
 
     setState(() {
-      _history.add("$historyDisplay T");
+      _addHistory(SelectableText.rich(TextSpan(
+        children: [
+          TextSpan(text: historyDisplay),
+          TextSpan(
+            text: " T",
+            style: GoogleFonts.robotoMono(
+              fontWeight: FontWeight.bold,
+              color: Colors.green,
+            ),
+          ),
+        ],
+        style: const TextStyle(
+          fontSize: 16,
+        ),
+      )));
     });
   }
 
@@ -228,9 +241,37 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       // history
       if (_currentDisplay.startsWith("-")) {
-        _history.add("${_currentDisplay.substring(1)} -");
+        _addHistory(SelectableText.rich(TextSpan(
+          children: [
+            TextSpan(text: _currentDisplay.substring(1)),
+            TextSpan(
+              text: " —",
+              style: GoogleFonts.robotoMono(
+                fontWeight: FontWeight.bold,
+                color: Colors.red,
+              ),
+            ),
+          ],
+          style: const TextStyle(
+            fontSize: 16,
+          ),
+        )));
       } else {
-        _history.add("$_currentDisplay +");
+        _addHistory(SelectableText.rich(TextSpan(
+          children: [
+            TextSpan(text: _currentDisplay),
+            TextSpan(
+              text: " +",
+              style: GoogleFonts.robotoMono(
+                fontWeight: FontWeight.bold,
+                color: Colors.blue,
+              ),
+            ),
+          ],
+          style: const TextStyle(
+            fontSize: 16,
+          ),
+        )));
       }
 
       // running total
@@ -263,35 +304,59 @@ class _MyHomePageState extends State<MyHomePage> {
     _add();
   }
 
-  _onLongPressDisplay(BuildContext context) async {
+  _onLongPressDisplay(BuildContext context, bool fromHistory) async {
     final clipboard = await Clipboard.getData("text/plain");
 
     if (!mounted) return;
 
     showModalBottomSheet(
         context: context,
-        constraints: const BoxConstraints.tightFor(height: 150),
+        constraints: BoxConstraints.tightFor(height: fromHistory ? 75 : 150),
         builder: (context) {
           return Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              MaterialTextButton("Copy", onPressed: () async {
-                Navigator.pop(context);
-                await Clipboard.setData(ClipboardData(text: _currentDisplay));
-              }),
-              MaterialTextButton(
-                "Paste",
-                onPressed: clipboard?.text == null ||
-                        double.tryParse(clipboard!.text!) == null
-                    ? null
-                    : () {
-                        setState(() => _currentDisplay = clipboard.text!);
-                        Navigator.pop(context);
-                      },
-              ),
+              if (fromHistory)
+                MaterialTextButton(
+                  "Clear History",
+                  onPressed: () {
+                    Navigator.pop(context);
+                    setState(() => _history.clear());
+                  },
+                  fontSize: 18,
+                ),
+              if (!fromHistory)
+                MaterialTextButton(
+                  "Copy Number to Clipboard",
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    await Clipboard.setData(
+                        ClipboardData(text: _currentDisplay));
+                  },
+                  fontSize: 18,
+                ),
+              if (!fromHistory)
+                MaterialTextButton(
+                  "Paste Number from Clipboard",
+                  onPressed: clipboard?.text == null ||
+                          double.tryParse(clipboard!.text!) == null
+                      ? null
+                      : () {
+                          setState(() => _currentDisplay = clipboard.text!);
+                          Navigator.pop(context);
+                        },
+                  fontSize: 18,
+                ),
             ],
           );
         });
+  }
+
+  _addHistory(Widget widget) {
+    setState(() => _history.add(Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: widget,
+        )));
   }
 }
