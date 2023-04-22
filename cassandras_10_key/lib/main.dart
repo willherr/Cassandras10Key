@@ -40,12 +40,17 @@ class _MyHomePageState extends State<MyHomePage> {
 
   String _currentDisplay = "0";
 
-  double get _currentValue => double.parse(_currentDisplay);
   double? _runningTotal;
+  String? _lastInput;
 
   bool _lastActionWasAFunction = false;
+  String _lastAction = "";
 
   final List<Widget> _history = [];
+
+  String get input => _lastInput != null && _lastActionWasAFunction
+      ? _lastInput!
+      : _currentDisplay;
 
   @override
   Widget build(BuildContext context) {
@@ -175,7 +180,10 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   _appendToNumber(String value) {
-    if (_lastActionWasAFunction) _clearNumber(false);
+    if (_lastActionWasAFunction) {
+      _clearNumber(false);
+      _lastActionWasAFunction = false;
+    }
 
     if (value == "." && _currentDisplay.contains(".")) return;
 
@@ -188,13 +196,16 @@ class _MyHomePageState extends State<MyHomePage> {
 
   _clearNumber(bool andLastValue) {
     setState(() {
-      _lastActionWasAFunction = false;
       _currentDisplay = "0";
 
       if (andLastValue) {
         _runningTotal = null;
-        _addHistory(
-            const Divider(color: Colors.red, indent: 50, endIndent: 50));
+        _lastInput = null;
+        _addHistory(const Divider(
+          color: Colors.red,
+          indent: 50,
+          endIndent: 50,
+        ));
       }
     });
   }
@@ -219,6 +230,8 @@ class _MyHomePageState extends State<MyHomePage> {
     }
 
     setState(() {
+      _lastActionWasAFunction = true;
+
       _addHistory(SelectableText.rich(TextSpan(
         children: [
           TextSpan(text: historyDisplay),
@@ -234,18 +247,36 @@ class _MyHomePageState extends State<MyHomePage> {
           fontSize: 16,
         ),
       )));
+
+      _currentDisplay = historyDisplay;
+
+      _lastInput = historyDisplay.startsWith("-")
+          ? historyDisplay.substring(1)
+          : historyDisplay;
+
+      _runningTotal = null;
+
+      _addHistory(const Divider(
+        color: Colors.green,
+        indent: 50,
+        endIndent: 50,
+      ));
     });
   }
 
-  _add() {
+  _add([String? input]) {
+    // if the user did an add or subtract
+    _lastInput = input ?? this.input;
+    final currentValue = double.parse(_lastInput!);
+
     setState(() {
       // history
-      if (_currentDisplay.startsWith("-")) {
+      if (_lastInput!.startsWith("-")) {
         _addHistory(SelectableText.rich(TextSpan(
           children: [
-            TextSpan(text: _currentDisplay.substring(1)),
+            TextSpan(text: _lastInput!.substring(1)),
             TextSpan(
-              text: " —",
+              text: " -",
               style: GoogleFonts.robotoMono(
                 fontWeight: FontWeight.bold,
                 color: Colors.red,
@@ -259,7 +290,7 @@ class _MyHomePageState extends State<MyHomePage> {
       } else {
         _addHistory(SelectableText.rich(TextSpan(
           children: [
-            TextSpan(text: _currentDisplay),
+            TextSpan(text: _lastInput),
             TextSpan(
               text: " +",
               style: GoogleFonts.robotoMono(
@@ -276,9 +307,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
       // running total
       if (_runningTotal == null) {
-        _runningTotal = _currentValue;
+        _runningTotal = currentValue;
       } else {
-        _runningTotal = _currentValue + _runningTotal!;
+        _runningTotal = currentValue + _runningTotal!;
       }
 
       _currentDisplay = _runningTotal.toString();
@@ -291,17 +322,19 @@ class _MyHomePageState extends State<MyHomePage> {
       }
 
       _lastActionWasAFunction = true;
+
+      if (_lastInput!.startsWith("-")) {
+        _lastInput = _lastInput!.substring(1); // don't persist negative inputs
+      }
     });
   }
 
   _subtract() {
-    if (_currentDisplay.startsWith("-")) {
-      _currentDisplay = _currentDisplay.substring(1);
+    if (input.startsWith("-")) {
+      _add(input.substring(1));
     } else {
-      _currentDisplay = "-$_currentDisplay";
+      _add("-$input");
     }
-
-    _add();
   }
 
   _onLongPressDisplay(BuildContext context, bool fromHistory) async {
