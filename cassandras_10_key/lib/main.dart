@@ -1,3 +1,5 @@
+import 'package:adding_machine/edit_history_dialog.dart';
+import 'package:adding_machine/history_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -44,9 +46,8 @@ class _MyHomePageState extends State<MyHomePage> {
   String? _lastInput;
 
   bool _lastActionWasAFunction = false;
-  String _lastAction = "";
 
-  final List<Widget> _history = [];
+  final List<History> _history = [];
 
   String get input => _lastInput != null && _lastActionWasAFunction
       ? _lastInput!
@@ -114,6 +115,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
     return Scaffold(
       key: _scaffold,
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Center(
           child: Column(
@@ -128,7 +130,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.end,
                       crossAxisAlignment: CrossAxisAlignment.end,
-                      children: _history,
+                      children: _history.map((h) => h.widget).toList(),
                     ),
                   ),
                 ),
@@ -201,11 +203,20 @@ class _MyHomePageState extends State<MyHomePage> {
       if (andLastValue) {
         _runningTotal = null;
         _lastInput = null;
-        _addHistory(const Divider(
-          color: Colors.red,
-          indent: 50,
-          endIndent: 50,
-        ));
+        _addHistory(
+          History(
+            value: 0,
+            isClear: true,
+            widget: const Padding(
+              padding: EdgeInsets.all(8.0),
+              child: Divider(
+                color: Colors.red,
+                indent: 50,
+                endIndent: 50,
+              ),
+            ),
+          ),
+        );
       }
     });
   }
@@ -232,21 +243,13 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       _lastActionWasAFunction = true;
 
-      _addHistory(SelectableText.rich(TextSpan(
-        children: [
-          TextSpan(text: historyDisplay),
-          TextSpan(
-            text: " T",
-            style: GoogleFonts.robotoMono(
-              fontWeight: FontWeight.bold,
-              color: Colors.green,
-            ),
-          ),
-        ],
-        style: const TextStyle(
-          fontSize: 16,
+      _addHistory(
+        History(
+          value: _runningTotal!,
+          isTotal: true,
+          widget: _historyWidget(_runningTotal!, isTotal: true),
         ),
-      )));
+      );
 
       _currentDisplay = historyDisplay;
 
@@ -256,11 +259,21 @@ class _MyHomePageState extends State<MyHomePage> {
 
       _runningTotal = null;
 
-      _addHistory(const Divider(
-        color: Colors.green,
-        indent: 50,
-        endIndent: 50,
-      ));
+      _addHistory(
+        History(
+          value: 0,
+          isClear: true,
+          isTotal: true,
+          widget: const Padding(
+            padding: EdgeInsets.all(8.0),
+            child: Divider(
+              color: Colors.green,
+              indent: 50,
+              endIndent: 50,
+            ),
+          ),
+        ),
+      );
     });
   }
 
@@ -271,39 +284,12 @@ class _MyHomePageState extends State<MyHomePage> {
 
     setState(() {
       // history
-      if (_lastInput!.startsWith("-")) {
-        _addHistory(SelectableText.rich(TextSpan(
-          children: [
-            TextSpan(text: _lastInput!.substring(1)),
-            TextSpan(
-              text: " -",
-              style: GoogleFonts.robotoMono(
-                fontWeight: FontWeight.bold,
-                color: Colors.red,
-              ),
-            ),
-          ],
-          style: const TextStyle(
-            fontSize: 16,
-          ),
-        )));
-      } else {
-        _addHistory(SelectableText.rich(TextSpan(
-          children: [
-            TextSpan(text: _lastInput),
-            TextSpan(
-              text: " +",
-              style: GoogleFonts.robotoMono(
-                fontWeight: FontWeight.bold,
-                color: Colors.blue,
-              ),
-            ),
-          ],
-          style: const TextStyle(
-            fontSize: 16,
-          ),
-        )));
-      }
+      _addHistory(
+        History(
+          value: currentValue,
+          widget: _historyWidget(currentValue),
+        ),
+      );
 
       // running total
       if (_runningTotal == null) {
@@ -386,10 +372,158 @@ class _MyHomePageState extends State<MyHomePage> {
         });
   }
 
-  _addHistory(Widget widget) {
-    setState(() => _history.add(Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: widget,
-        )));
+  _addHistory(History history) {
+    setState(() => _history.add(history));
+  }
+
+  _editHistory(double value, int index) async {
+    double newValue = await showDialog(
+          context: context,
+          builder: (context) => Expanded(
+            child: EditHistoryDialog(initialValue: value),
+          ),
+        ) ??
+        value;
+
+    var difference = newValue - value;
+
+    if (difference != 0) {
+      var updateRunningTotal = true;
+      var newTotal = (_runningTotal ?? 0) + difference;
+
+      setState(() {
+        _history[index] = History(
+          value: newValue,
+          isTotal: _history[index].isTotal,
+          isClear: _history[index].isClear,
+          widget: _historyWidget(newValue, index: index),
+        );
+
+        for (++index; index < _history.length; index++) {
+          if (_history[index].isClear) {
+            updateRunningTotal = false;
+            break;
+          }
+          if (!_history[index].isTotal) continue;
+
+          newTotal = difference + _history[index].value;
+
+          _history[index] = History(
+            value: newTotal,
+            isTotal: _history[index].isTotal,
+            isClear: _history[index].isClear,
+            widget: _historyWidget(
+              newTotal,
+              index: index,
+              isTotal: _history[index].isTotal,
+            ),
+          );
+        }
+
+        if (updateRunningTotal) {
+          _runningTotal = newTotal;
+        }
+
+        if (updateRunningTotal || _history[_history.length - 1].isTotal) {
+          _currentDisplay = newTotal.toString();
+
+          if (_currentDisplay.endsWith(".0")) {
+            _currentDisplay = _currentDisplay.substring(
+              0,
+              _currentDisplay.length - 2,
+            );
+          }
+        }
+      });
+    }
+  }
+
+  Widget _historyWidget(
+    double currentValue, {
+    int index = -1,
+    bool isTotal = false,
+  }) {
+    Widget history;
+
+    if (isTotal) {
+      var historyDisplay = currentValue.toString();
+
+      if (historyDisplay.endsWith(".0")) {
+        historyDisplay = historyDisplay.substring(0, historyDisplay.length - 2);
+      }
+
+      return Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: SelectableText.rich(
+          TextSpan(
+            children: [
+              TextSpan(text: historyDisplay),
+              TextSpan(
+                text: " T",
+                style: GoogleFonts.robotoMono(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green,
+                ),
+              ),
+            ],
+            style: const TextStyle(
+              fontSize: 16,
+            ),
+          ),
+        ),
+      );
+    } else if (currentValue < 0) {
+      history = RichText(
+        text: TextSpan(
+          children: [
+            TextSpan(
+              text: currentValue.toString().substring(1),
+              style: const TextStyle(color: Colors.black),
+            ),
+            TextSpan(
+              text: " -",
+              style: GoogleFonts.robotoMono(
+                fontWeight: FontWeight.bold,
+                color: Colors.red,
+              ),
+            ),
+          ],
+          style: const TextStyle(
+            fontSize: 16,
+          ),
+        ),
+      );
+    } else {
+      history = RichText(
+        text: TextSpan(
+          children: [
+            TextSpan(
+              text: currentValue.toString(),
+              style: const TextStyle(color: Colors.black),
+            ),
+            TextSpan(
+              text: " +",
+              style: GoogleFonts.robotoMono(
+                fontWeight: FontWeight.bold,
+                color: Colors.blue,
+              ),
+            ),
+          ],
+          style: const TextStyle(
+            fontSize: 16,
+          ),
+        ),
+      );
+    }
+
+    index = index < 0 ? _history.length : index;
+    return GestureDetector(
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: history,
+      ),
+      onLongPress: () => _editHistory(currentValue, index),
+      onDoubleTap: () => _editHistory(currentValue, index),
+    );
   }
 }
