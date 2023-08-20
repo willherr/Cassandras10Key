@@ -6,15 +6,9 @@ A new Flutter project.
 This link is required for attribution of the logo.
 <a href="https://www.flaticon.com/free-icons/adding-machine" title="adding machine icons">Adding machine icons created by Freepik - Flaticon</a>
 
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Publishing
+1. Increment pubspec.yml build version number.
+2. Run `flutter build appbundle`
+3. Click the create a new release button in the [Google Play Console](https://play.google.com/console/u/0/developers/5199002862287665816/app/4974365505926820594/tracks/production)
+  a. Sign in with will-i-am.dev
+4. Upload the app bundle

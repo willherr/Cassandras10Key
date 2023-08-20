@@ -379,9 +379,7 @@ class _MyHomePageState extends State<MyHomePage> {
   _editHistory(double value, int index) async {
     double newValue = await showDialog(
           context: context,
-          builder: (context) => Expanded(
-            child: EditHistoryDialog(initialValue: value),
-          ),
+          builder: (context) => EditHistoryDialog(initialValue: value),
         ) ??
         value;
 
@@ -472,50 +470,59 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         ),
       );
-    } else if (currentValue < 0) {
-      history = RichText(
-        text: TextSpan(
-          children: [
-            TextSpan(
-              text: currentValue.toString().substring(1),
-              style: const TextStyle(color: Colors.black),
-            ),
-            TextSpan(
-              text: " -",
-              style: GoogleFonts.robotoMono(
-                fontWeight: FontWeight.bold,
-                color: Colors.red,
-              ),
-            ),
-          ],
-          style: const TextStyle(
-            fontSize: 16,
-          ),
-        ),
-      );
     } else {
-      history = RichText(
-        text: TextSpan(
-          children: [
-            TextSpan(
-              text: currentValue.toString(),
-              style: const TextStyle(color: Colors.black),
-            ),
-            TextSpan(
-              text: " +",
-              style: GoogleFonts.robotoMono(
-                fontWeight: FontWeight.bold,
-                color: Colors.blue,
-              ),
-            ),
-          ],
-          style: const TextStyle(
-            fontSize: 16,
-          ),
-        ),
-      );
-    }
+      var currentValueDisplay = currentValue.toString();
+      if (currentValueDisplay.endsWith(".0")) {
+        currentValueDisplay = currentValueDisplay.substring(
+          0,
+          currentValueDisplay.length - 2,
+        );
+      }
 
+      if (currentValue < 0) {
+        history = RichText(
+          text: TextSpan(
+            children: [
+              TextSpan(
+                text: currentValueDisplay.substring(1),
+                style: const TextStyle(color: Colors.black),
+              ),
+              TextSpan(
+                text: " -",
+                style: GoogleFonts.robotoMono(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                ),
+              ),
+            ],
+            style: const TextStyle(
+              fontSize: 16,
+            ),
+          ),
+        );
+      } else {
+        history = RichText(
+          text: TextSpan(
+            children: [
+              TextSpan(
+                text: currentValueDisplay,
+                style: const TextStyle(color: Colors.black),
+              ),
+              TextSpan(
+                text: " +",
+                style: GoogleFonts.robotoMono(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue,
+                ),
+              ),
+            ],
+            style: const TextStyle(
+              fontSize: 16,
+            ),
+          ),
+        );
+      }
+    }
     index = index < 0 ? _history.length : index;
     return GestureDetector(
       child: Padding(
