@@ -8,7 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'material_text_button.dart';
 
-Future<void> main() async {
+void main() {
   runApp(const MyApp());
 }
 
