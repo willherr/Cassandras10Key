@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:adding_machine/edit_history_dialog.dart';
 import 'package:adding_machine/history_model.dart';
 import 'package:flutter/material.dart';
@@ -6,7 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'material_text_button.dart';
 
-void main() {
+Future<void> main() async {
   runApp(const MyApp());
 }
 
@@ -53,8 +55,31 @@ class _MyHomePageState extends State<MyHomePage> {
       ? _lastInput!
       : _currentDisplay;
 
+  bool get allowDualScreen =>
+      MediaQuery.of(context).orientation == Orientation.landscape &&
+          MediaQuery.of(context).displayFeatures.any((df) =>
+              df.type == DisplayFeatureType.fold ||
+              df.type == DisplayFeatureType.hinge) ||
+      MediaQuery.of(context).size.width > 500;
+
   @override
   Widget build(BuildContext context) {
+    return Scaffold(
+      key: _scaffold,
+      resizeToAvoidBottomInset: false,
+      body: SafeArea(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(child: _mainWidget()),
+            if (allowDualScreen) Expanded(child: _tapeWidget()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  _mainWidget() {
     final clearButtons = [
       MaterialTextButton(
         "C",
@@ -113,69 +138,77 @@ class _MyHomePageState extends State<MyHomePage> {
       row.children.add(Expanded(child: buttons[i]));
     }
 
-    return Scaffold(
-      key: _scaffold,
-      resizeToAvoidBottomInset: false,
-      body: SafeArea(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: GestureDetector(
-                  onLongPress: () => _onLongPressDisplay(context, true),
-                  child: SingleChildScrollView(
-                    reverse: true,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: _history.map((h) => h.widget).toList(),
+    return Center(
+      child: Container(
+        decoration: const BoxDecoration(
+          border: Border(
+            right: BorderSide(
+              width: 1,
+              color: Colors.grey,
+            ),
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: allowDualScreen ? Container() : _tapeWidget(),
+            ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                GestureDetector(
+                  onLongPress: () => _onLongPressDisplay(context, false),
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      border: Border.symmetric(
+                        horizontal: BorderSide(color: Colors.grey),
+                      ),
+                    ),
+                    padding: const EdgeInsets.all(4.0),
+                    margin: const EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      _currentDisplay,
+                      textAlign: TextAlign.end,
+                      style: const TextStyle(fontSize: 32.0),
                     ),
                   ),
                 ),
-              ),
-              Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  GestureDetector(
-                    onLongPress: () => _onLongPressDisplay(context, false),
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        border: Border.symmetric(
-                          horizontal: BorderSide(color: Colors.grey),
-                        ),
-                      ),
-                      padding: const EdgeInsets.all(4.0),
-                      margin: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        _currentDisplay,
-                        textAlign: TextAlign.end,
-                        style: const TextStyle(fontSize: 32.0),
-                      ),
-                    ),
-                  ),
-                  Column(
-                    children: [
-                      ...rows,
-                      Row(
-                        children: [
-                          Expanded(
-                            child: MaterialTextButton(
-                              "=",
-                              accent: true,
-                              onPressed: () => _equals(),
-                            ),
+                Column(
+                  children: [
+                    ...rows,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: MaterialTextButton(
+                            "=",
+                            accent: true,
+                            onPressed: () => _equals(),
                           ),
-                        ],
-                      ),
-                    ],
-                  )
-                ],
-              ),
-            ],
-          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                )
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  _tapeWidget() {
+    return GestureDetector(
+      onLongPress: () => _onLongPressDisplay(context, true),
+      child: SingleChildScrollView(
+        reverse: true,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: _history.map((h) => h.widget).toList(),
         ),
       ),
     );
