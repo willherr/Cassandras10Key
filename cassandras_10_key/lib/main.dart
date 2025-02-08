@@ -123,11 +123,14 @@ class _MyHomePageState extends State<MyHomePage> {
     ];
 
     final rows = <Row>[];
-    Row row = const Row();
+
+    // ignore: prefer_const_constructors - breaks on line row.children.add(Expanded(child: buttons[i]));
+    Row row = Row();
 
     for (var i = 0; i < buttons.length; i++) {
       if (i % 3 == 0) {
-        row = const Row(
+        // ignore: prefer_const_constructors
+        row = Row(
           mainAxisAlignment: MainAxisAlignment.start,
           // ignore: prefer_const_literals_to_create_immutables
           children: [],
