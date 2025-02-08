@@ -32,7 +32,7 @@ class MaterialTextButton extends StatelessWidget {
 
     return TextButton(
       style: ButtonStyle(
-        overlayColor: MaterialStatePropertyAll(color.withOpacity(.2)),
+        overlayColor: WidgetStatePropertyAll(color.withOpacity(.2)),
       ),
       onPressed: onPressed == null ? null : () => onPressed!(),
       child: Padding(

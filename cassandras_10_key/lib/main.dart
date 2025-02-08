@@ -123,11 +123,11 @@ class _MyHomePageState extends State<MyHomePage> {
     ];
 
     final rows = <Row>[];
-    Row row = Row();
+    Row row = const Row();
 
     for (var i = 0; i < buttons.length; i++) {
       if (i % 3 == 0) {
-        row = Row(
+        row = const Row(
           mainAxisAlignment: MainAxisAlignment.start,
           // ignore: prefer_const_literals_to_create_immutables
           children: [],
