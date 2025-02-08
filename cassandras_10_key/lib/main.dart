@@ -91,7 +91,7 @@ class _MyHomePageState extends State<MyHomePage> {
         warn: true,
         onPressed: () => _clearNumber(false),
       ),
-      MaterialTextButton("←", warn: true, onPressed: () => _backSpace()),
+      MaterialTextButton("⬅", warn: true, onPressed: () => _backSpace()),
     ];
 
     final functionButtons = [
@@ -113,7 +113,7 @@ class _MyHomePageState extends State<MyHomePage> {
       MaterialTextButton("3", onPressed: () => _appendToNumber('3')),
       Container(),
       MaterialTextButton("0", onPressed: () => _appendToNumber('0')),
-      MaterialTextButton(".", onPressed: () => _appendToNumber('.')),
+      MaterialTextButton("•", onPressed: () => _appendToNumber('.')),
     ];
 
     final buttons = [
@@ -328,7 +328,7 @@ class _MyHomePageState extends State<MyHomePage> {
       if (_runningTotal == null) {
         _runningTotal = currentValue;
       } else {
-        _runningTotal = currentValue + _runningTotal!;
+        _runningTotal = _round(currentValue + _runningTotal!);
       }
 
       _currentDisplay = _runningTotal.toString();
@@ -420,7 +420,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
     if (difference != 0) {
       var updateRunningTotal = true;
-      var newTotal = (_runningTotal ?? 0) + difference;
+      var newTotal = _round((_runningTotal ?? 0) + difference);
 
       setState(() {
         _history[index] = History(
@@ -437,7 +437,7 @@ class _MyHomePageState extends State<MyHomePage> {
           }
           if (!_history[index].isTotal) continue;
 
-          newTotal = difference + _history[index].value;
+          newTotal = _round(difference + _history[index].value);
 
           _history[index] = History(
             value: newTotal,
@@ -565,5 +565,9 @@ class _MyHomePageState extends State<MyHomePage> {
       onLongPress: () => _editHistory(currentValue, index),
       onDoubleTap: () => _editHistory(currentValue, index),
     );
+  }
+
+  double _round(double value, {double precision = 100000000}) {
+    return (value * precision).round() / precision;
   }
 }
