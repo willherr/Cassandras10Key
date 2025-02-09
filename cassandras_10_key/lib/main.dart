@@ -1,19 +1,25 @@
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:adding_machine/edit_history_dialog.dart';
 import 'package:adding_machine/history_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'material_text_button.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  DartPluginRegistrant.ensureInitialized();
+  runApp(MyApp(await getTemporaryDirectory()));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp(this.tempDirectory, {super.key});
+
+  final Directory tempDirectory;
 
   @override
   Widget build(BuildContext context) {
@@ -27,13 +33,15 @@ class MyApp extends StatelessWidget {
           errorColor: Colors.red,
         ),
       ),
-      home: const MyHomePage(),
+      home: MyHomePage(tempDirectory),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key});
+  const MyHomePage(this.tempDirectory, {super.key});
+
+  final Directory tempDirectory;
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -61,6 +69,11 @@ class _MyHomePageState extends State<MyHomePage> {
               df.type == DisplayFeatureType.fold ||
               df.type == DisplayFeatureType.hinge) ||
       MediaQuery.of(context).size.width > 500;
+
+  File get _historyFile {
+    var path = widget.tempDirectory.path;
+    return File('$path/history.json');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -204,6 +217,8 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   _tapeWidget() {
+    DateTime? lastDate;
+
     return GestureDetector(
       onLongPress: () => _onLongPressDisplay(context, true),
       child: SingleChildScrollView(
@@ -211,7 +226,56 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.end,
           crossAxisAlignment: CrossAxisAlignment.end,
-          children: _history.map((h) => h.widget).toList(),
+          children: _history.expand((h) {
+            var widgets = [
+              h.widget(() => _editHistory(h.value, _history.indexOf(h))),
+            ];
+
+            var historyDate = DateTime(
+              h.createdDate.year,
+              h.createdDate.month,
+              h.createdDate.day,
+            );
+
+            if (historyDate != lastDate) {
+              var formattedDate = DateFormat.yMMMMd().format(historyDate);
+
+              if (historyDate.year == DateTime.now().year) {
+                var now = DateTime.now();
+                now = DateTime(now.year, now.month, now.day);
+
+                if (historyDate == now) {
+                  formattedDate = "Today";
+                } else if (historyDate == now.add(const Duration(days: -1))) {
+                  formattedDate = "Yesterday";
+                } else {
+                  formattedDate = DateFormat.MMMMd().format(historyDate);
+                }
+              }
+
+              widgets.insert(
+                0,
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 8.0, top: 16.0),
+                    child: Text(
+                      formattedDate,
+                      style: const TextStyle(
+                        color: Color.fromARGB(255, 125, 125, 125),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+
+              lastDate = historyDate;
+            }
+
+            return widgets;
+          }).toList(),
         ),
       ),
     );
@@ -239,20 +303,7 @@ class _MyHomePageState extends State<MyHomePage> {
       if (andLastValue) {
         _runningTotal = null;
         _lastInput = null;
-        _addHistory(
-          History(
-            value: 0,
-            isClear: true,
-            widget: const Padding(
-              padding: EdgeInsets.all(8.0),
-              child: Divider(
-                color: Colors.red,
-                indent: 50,
-                endIndent: 50,
-              ),
-            ),
-          ),
-        );
+        _addHistory(History(isClear: true));
       }
     });
   }
@@ -279,13 +330,7 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       _lastActionWasAFunction = true;
 
-      _addHistory(
-        History(
-          value: _runningTotal!,
-          isTotal: true,
-          widget: _historyWidget(_runningTotal!, isTotal: true),
-        ),
-      );
+      _addHistory(History(value: _runningTotal!, isTotal: true));
 
       _currentDisplay = historyDisplay;
 
@@ -295,21 +340,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
       _runningTotal = null;
 
-      _addHistory(
-        History(
-          value: 0,
-          isClear: true,
-          isTotal: true,
-          widget: const Padding(
-            padding: EdgeInsets.all(8.0),
-            child: Divider(
-              color: Colors.green,
-              indent: 50,
-              endIndent: 50,
-            ),
-          ),
-        ),
-      );
+      _addHistory(History(isClear: true, isTotal: true));
     });
   }
 
@@ -320,12 +351,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
     setState(() {
       // history
-      _addHistory(
-        History(
-          value: currentValue,
-          widget: _historyWidget(currentValue),
-        ),
-      );
+      _addHistory(History(value: currentValue));
 
       // running total
       if (_runningTotal == null) {
@@ -408,8 +434,9 @@ class _MyHomePageState extends State<MyHomePage> {
         });
   }
 
-  _addHistory(History history) {
+  _addHistory(History history) async {
     setState(() => _history.add(history));
+    // await _historyFile.writeAsString
   }
 
   _editHistory(double value, int index) async {
@@ -430,7 +457,6 @@ class _MyHomePageState extends State<MyHomePage> {
           value: newValue,
           isTotal: _history[index].isTotal,
           isClear: _history[index].isClear,
-          widget: _historyWidget(newValue, index: index),
         );
 
         for (++index; index < _history.length; index++) {
@@ -446,11 +472,6 @@ class _MyHomePageState extends State<MyHomePage> {
             value: newTotal,
             isTotal: _history[index].isTotal,
             isClear: _history[index].isClear,
-            widget: _historyWidget(
-              newTotal,
-              index: index,
-              isTotal: _history[index].isTotal,
-            ),
           );
         }
 
@@ -470,104 +491,6 @@ class _MyHomePageState extends State<MyHomePage> {
         }
       });
     }
-  }
-
-  Widget _historyWidget(
-    double currentValue, {
-    int index = -1,
-    bool isTotal = false,
-  }) {
-    Widget history;
-
-    if (isTotal) {
-      var historyDisplay = currentValue.toString();
-
-      if (historyDisplay.endsWith(".0")) {
-        historyDisplay = historyDisplay.substring(0, historyDisplay.length - 2);
-      }
-
-      return Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: SelectableText.rich(
-          TextSpan(
-            children: [
-              TextSpan(text: historyDisplay),
-              TextSpan(
-                text: " T",
-                style: GoogleFonts.robotoMono(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green,
-                ),
-              ),
-            ],
-            style: const TextStyle(
-              fontSize: 16,
-            ),
-          ),
-        ),
-      );
-    } else {
-      var currentValueDisplay = currentValue.toString();
-      if (currentValueDisplay.endsWith(".0")) {
-        currentValueDisplay = currentValueDisplay.substring(
-          0,
-          currentValueDisplay.length - 2,
-        );
-      }
-
-      if (currentValue < 0) {
-        history = RichText(
-          text: TextSpan(
-            children: [
-              TextSpan(
-                text: currentValueDisplay.substring(1),
-                style: const TextStyle(color: Colors.black),
-              ),
-              TextSpan(
-                text: " -",
-                style: GoogleFonts.robotoMono(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.red,
-                ),
-              ),
-            ],
-            style: const TextStyle(
-              fontSize: 16,
-            ),
-          ),
-        );
-      } else {
-        history = RichText(
-          text: TextSpan(
-            children: [
-              TextSpan(
-                text: currentValueDisplay,
-                style: const TextStyle(color: Colors.black),
-              ),
-              TextSpan(
-                text: " +",
-                style: GoogleFonts.robotoMono(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
-                ),
-              ),
-            ],
-            style: const TextStyle(
-              fontSize: 16,
-            ),
-          ),
-        );
-      }
-    }
-    index = index < 0 ? _history.length : index;
-    return GestureDetector(
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: history,
-      ),
-      onLongPress: () => _editHistory(currentValue, index),
-      onDoubleTap: () => _editHistory(currentValue, index),
-    );
   }
 
   double _round(double value, {double precision = 100000000}) {
