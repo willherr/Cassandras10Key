@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 
 class MaterialTextButton extends StatelessWidget {
-  const MaterialTextButton(this.text,
-      {super.key,
-      required this.onPressed,
-      this.primary = true,
-      this.accent = false,
-      this.warn = false,
-      this.fontSize = 26});
+  const MaterialTextButton(
+    this.text, {
+    super.key,
+    required this.onPressed,
+    this.primary = true,
+    this.accent = false,
+    this.warn = false,
+    this.fontSize = 26,
+  });
 
   final bool primary;
   final bool accent;
@@ -32,7 +34,7 @@ class MaterialTextButton extends StatelessWidget {
 
     return TextButton(
       style: ButtonStyle(
-        overlayColor: WidgetStatePropertyAll(color.withOpacity(.2)),
+        overlayColor: WidgetStatePropertyAll(color.withValues(alpha: .2)),
       ),
       onPressed: onPressed == null ? null : () => onPressed!(),
       child: Padding(

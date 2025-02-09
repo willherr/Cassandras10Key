@@ -1,25 +1,24 @@
-import 'dart:io';
 import 'dart:ui';
 
+import 'package:adding_machine/app_settings_model.dart';
 import 'package:adding_machine/edit_history_dialog.dart';
 import 'package:adding_machine/history_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
 
 import 'material_text_button.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   DartPluginRegistrant.ensureInitialized();
-  runApp(MyApp(await getTemporaryDirectory()));
+  runApp(MyApp(await AppSettings.get()));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp(this.tempDirectory, {super.key});
+  const MyApp(this.appSettings, {super.key});
 
-  final Directory tempDirectory;
+  final AppSettings appSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -33,15 +32,15 @@ class MyApp extends StatelessWidget {
           errorColor: Colors.red,
         ),
       ),
-      home: MyHomePage(tempDirectory),
+      home: MyHomePage(appSettings),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage(this.tempDirectory, {super.key});
+  const MyHomePage(this.appSettings, {super.key});
 
-  final Directory tempDirectory;
+  final AppSettings appSettings;
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -57,8 +56,6 @@ class _MyHomePageState extends State<MyHomePage> {
 
   bool _lastActionWasAFunction = false;
 
-  final List<History> _history = [];
-
   String get input => _lastInput != null && _lastActionWasAFunction
       ? _lastInput!
       : _currentDisplay;
@@ -69,11 +66,6 @@ class _MyHomePageState extends State<MyHomePage> {
               df.type == DisplayFeatureType.fold ||
               df.type == DisplayFeatureType.hinge) ||
       MediaQuery.of(context).size.width > 500;
-
-  File get _historyFile {
-    var path = widget.tempDirectory.path;
-    return File('$path/history.json');
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -226,9 +218,10 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.end,
           crossAxisAlignment: CrossAxisAlignment.end,
-          children: _history.expand((h) {
+          children: widget.appSettings.history.expand((h) {
             var widgets = [
-              h.widget(() => _editHistory(h.value, _history.indexOf(h))),
+              h.widget(() => _editHistory(
+                  h.value, widget.appSettings.history.toList().indexOf(h))),
             ];
 
             var historyDate = DateTime(
@@ -388,7 +381,7 @@ class _MyHomePageState extends State<MyHomePage> {
   _onLongPressDisplay(BuildContext context, bool fromHistory) async {
     final clipboard = await Clipboard.getData("text/plain");
 
-    if (!mounted) return;
+    if (!mounted || !context.mounted) return;
 
     showModalBottomSheet(
         context: context,
@@ -403,7 +396,9 @@ class _MyHomePageState extends State<MyHomePage> {
                   "Clear History",
                   onPressed: () {
                     Navigator.pop(context);
-                    setState(() => _history.clear());
+                    setState(() {
+                      widget.appSettings.clearHistory();
+                    });
                   },
                   fontSize: 18,
                 ),
@@ -435,8 +430,9 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   _addHistory(History history) async {
-    setState(() => _history.add(history));
-    // await _historyFile.writeAsString
+    setState(() {
+      widget.appSettings.addHistory(history);
+    });
   }
 
   _editHistory(double value, int index) async {
@@ -453,25 +449,26 @@ class _MyHomePageState extends State<MyHomePage> {
       var newTotal = _round((_runningTotal ?? 0) + difference);
 
       setState(() {
-        _history[index] = History(
+        widget.appSettings.history[index] = History(
           value: newValue,
-          isTotal: _history[index].isTotal,
-          isClear: _history[index].isClear,
+          isTotal: widget.appSettings.history[index].isTotal,
+          isClear: widget.appSettings.history[index].isClear,
         );
 
-        for (++index; index < _history.length; index++) {
-          if (_history[index].isClear) {
+        for (++index; index < widget.appSettings.history.length; index++) {
+          if (widget.appSettings.history[index].isClear) {
             updateRunningTotal = false;
             break;
           }
-          if (!_history[index].isTotal) continue;
+          if (!widget.appSettings.history[index].isTotal) continue;
 
-          newTotal = _round(difference + _history[index].value);
+          newTotal =
+              _round(difference + widget.appSettings.history[index].value);
 
-          _history[index] = History(
+          widget.appSettings.history[index] = History(
             value: newTotal,
-            isTotal: _history[index].isTotal,
-            isClear: _history[index].isClear,
+            isTotal: widget.appSettings.history[index].isTotal,
+            isClear: widget.appSettings.history[index].isClear,
           );
         }
 
@@ -479,7 +476,9 @@ class _MyHomePageState extends State<MyHomePage> {
           _runningTotal = newTotal;
         }
 
-        if (updateRunningTotal || _history[_history.length - 1].isTotal) {
+        if (updateRunningTotal ||
+            widget.appSettings.history[widget.appSettings.history.length - 1]
+                .isTotal) {
           _currentDisplay = newTotal.toString();
 
           if (_currentDisplay.endsWith(".0")) {

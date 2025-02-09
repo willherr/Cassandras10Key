@@ -2,18 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:json_annotation/json_annotation.dart';
 
+part 'history_model.g.dart';
+
+// see: https://www.kindacode.com/article/dart-ways-to-convert-a-class-instance-to-json#using-json_serializable-package
+// for building JSON models
+
+// note: if new properties are added, run the following command:
+//       dart run build_runner build
+
 @JsonSerializable()
 class History {
   History({
     this.value = 0,
     this.isTotal = false,
     this.isClear = false,
-  });
+    DateTime? createdDate,
+  }) : createdDate = createdDate ?? DateTime.now();
 
   final double value;
   final bool isTotal;
   final bool isClear;
-  final DateTime createdDate = DateTime.now();
+  final DateTime createdDate;
 
   Widget widget(Function editHistory) {
     if (isClear) {
@@ -37,8 +46,6 @@ class History {
         ),
       );
     }
-
-    Widget history;
 
     if (isTotal) {
       var historyDisplay = value.toString();
@@ -75,6 +82,8 @@ class History {
           currentValueDisplay.length - 2,
         );
       }
+
+      Widget history;
 
       if (value < 0) {
         history = RichText(
@@ -119,15 +128,19 @@ class History {
           ),
         );
       }
-    }
 
-    return GestureDetector(
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: history,
-      ),
-      onLongPress: () => editHistory(),
-      onDoubleTap: () => editHistory(),
-    );
+      return GestureDetector(
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: history,
+        ),
+        onLongPress: () => editHistory(),
+        onDoubleTap: () => editHistory(),
+      );
+    }
   }
+
+  Map<String, dynamic> toJson() => _$HistoryToJson(this);
+  factory History.fromJson(Map<String, dynamic> json) =>
+      _$HistoryFromJson(json);
 }
