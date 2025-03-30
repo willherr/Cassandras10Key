@@ -1,18 +1,30 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:adding_machine/history_model.dart';
+import 'package:adding_machine/util/history_model.dart';
 import 'package:flutter/foundation.dart';
+import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 
-class AppSettings {
-  AppSettings._create(this.history, [this.historyFile]);
+class AppState {
+  AppState._create(this.history, [this.historyFile]);
 
   final List<History> history;
   final File? historyFile;
 
-  static Future<AppSettings> get() async {
-    if (kIsWeb) return AppSettings._create([]);
+  String currentValue = "0";
+  String currentDisplay = "0";
+
+  double? runningTotal;
+  String? lastInput;
+
+  bool lastActionWasAFunction = false;
+
+  String get input =>
+      lastInput != null && lastActionWasAFunction ? lastInput! : currentValue;
+
+  static Future<AppState> get() async {
+    if (kIsWeb) return AppState._create([]);
 
     var tempDirectory = await getTemporaryDirectory();
 
@@ -29,7 +41,7 @@ class AppSettings {
             .toList()
         : <History>[];
 
-    return AppSettings._create(history, historyFile);
+    return AppState._create(history, historyFile);
   }
 
   addHistory(History h) async {
@@ -42,8 +54,19 @@ class AppSettings {
     await _saveHistory();
   }
 
+  setCurrentDisplay() {
+    final numberParts = currentValue.split(".");
+    final wholeNumber = int.parse(numberParts[0]);
+    final fractionPart = numberParts.length > 1 ? ".${numberParts[1]}" : "";
+
+    currentDisplay = "${NumberFormat.decimalPattern().format(
+      wholeNumber,
+    )}$fractionPart";
+  }
+
   _saveHistory() async {
     await historyFile?.writeAsString(
-        history.map((h) => jsonEncode(h)).join(Platform.lineTerminator));
+      history.map((h) => jsonEncode(h)).join(Platform.lineTerminator),
+    );
   }
 }

@@ -1,4 +1,4 @@
-import 'package:adding_machine/material_text_button.dart';
+import 'package:adding_machine/ui/material_text_button.dart';
 import 'package:flutter/material.dart';
 
 class EditHistoryDialog extends StatefulWidget {

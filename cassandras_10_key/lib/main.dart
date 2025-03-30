@@ -1,33 +1,37 @@
 import 'dart:ui';
 
-import 'package:adding_machine/app_settings_model.dart';
-import 'package:adding_machine/edit_history_dialog.dart';
-import 'package:adding_machine/history_model.dart';
+import 'package:adding_machine/app_state.dart';
+import 'package:adding_machine/util/history_model.dart';
+import 'package:adding_machine/ui/tape.dart';
+import 'package:adding_machine/util/round.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
 
-import 'material_text_button.dart';
+import 'ui/material_text_button.dart';
 
 void main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
   } catch (e) {
-    debugPrint(e.toString());
+    debugPrint("WidgetsFlutterBinding: $e");
   }
+
   try {
-    DartPluginRegistrant.ensureInitialized();
+    if (!kIsWeb) {
+      DartPluginRegistrant.ensureInitialized();
+    }
   } catch (e) {
-    debugPrint(e.toString());
-    ;
+    debugPrint("DartPluginRegistrant: $e");
   }
-  runApp(MyApp(await AppSettings.get()));
+
+  runApp(MyApp(await AppState.get()));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp(this.appSettings, {super.key});
+  const MyApp(this.appState, {super.key});
 
-  final AppSettings appSettings;
+  final AppState appState;
 
   @override
   Widget build(BuildContext context) {
@@ -41,35 +45,21 @@ class MyApp extends StatelessWidget {
           errorColor: Colors.red,
         ),
       ),
-      home: MyHomePage(appSettings),
+      home: MyHomePage(appState),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage(this.appSettings, {super.key});
+  const MyHomePage(this.appState, {super.key});
 
-  final AppSettings appSettings;
+  final AppState appState;
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final _scaffold = GlobalKey<ScaffoldState>();
-
-  String _currentValue = "0";
-  String _currentDisplay = "0";
-
-  double? _runningTotal;
-  String? _lastInput;
-
-  bool _lastActionWasAFunction = false;
-
-  String get input => _lastInput != null && _lastActionWasAFunction
-      ? _lastInput!
-      : _currentValue;
-
   bool get allowDualScreen =>
       MediaQuery.of(context).orientation == Orientation.landscape &&
           MediaQuery.of(context).displayFeatures.any((df) =>
@@ -80,7 +70,6 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      key: _scaffold,
       resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Row(
@@ -188,7 +177,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     padding: const EdgeInsets.all(4.0),
                     margin: const EdgeInsets.only(top: 8.0),
                     child: Text(
-                      _currentDisplay,
+                      widget.appState.currentDisplay,
                       textAlign: TextAlign.end,
                       style: const TextStyle(fontSize: 32.0),
                     ),
@@ -219,134 +208,81 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   _tapeWidget() {
-    DateTime? lastDate;
-
     return GestureDetector(
       onLongPress: () => _onLongPressDisplay(context, true),
-      child: SingleChildScrollView(
-        reverse: true,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: widget.appSettings.history.expand((h) {
-            var widgets = [
-              h.widget(() => _editHistory(
-                  h.value, widget.appSettings.history.toList().indexOf(h))),
-            ];
-
-            var historyDate = DateTime(
-              h.createdDate.year,
-              h.createdDate.month,
-              h.createdDate.day,
-            );
-
-            if (historyDate != lastDate) {
-              var formattedDate = DateFormat.yMMMMd().format(historyDate);
-
-              if (historyDate.year == DateTime.now().year) {
-                var now = DateTime.now();
-                now = DateTime(now.year, now.month, now.day);
-
-                if (historyDate == now) {
-                  formattedDate = "Today";
-                } else if (historyDate == now.add(const Duration(days: -1))) {
-                  formattedDate = "Yesterday";
-                } else {
-                  formattedDate = DateFormat.MMMMd().format(historyDate);
-                }
-              }
-
-              widgets.insert(
-                0,
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 8.0, top: 16.0),
-                    child: Text(
-                      formattedDate,
-                      style: const TextStyle(
-                        color: Color.fromARGB(255, 125, 125, 125),
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              );
-
-              lastDate = historyDate;
-            }
-
-            return widgets;
-          }).toList(),
-        ),
-      ),
+      child: Tape(widget.appState),
     );
   }
 
   _appendToNumber(String value) {
-    if (_lastActionWasAFunction) {
+    if (widget.appState.lastActionWasAFunction) {
       _clearNumber(false);
-      _lastActionWasAFunction = false;
+      widget.appState.lastActionWasAFunction = false;
     }
 
-    if (value == "." && _currentValue.contains(".")) return;
+    if (value == "." && widget.appState.currentValue.contains(".")) return;
 
-    if (_currentValue == "0" && value != ".") {
-      _currentValue = value;
+    if (widget.appState.currentValue == "0" && value != ".") {
+      widget.appState.currentValue = value;
     } else {
-      _currentValue += value;
+      widget.appState.currentValue += value;
     }
 
-    _setCurrentDisplay();
+    setState(widget.appState.setCurrentDisplay());
   }
 
   _clearNumber(bool andLastValue) {
     setState(() {
-      _currentValue = "0";
+      widget.appState.currentValue = "0";
 
-      _setCurrentDisplay(false);
+      widget.appState.setCurrentDisplay();
 
       if (andLastValue) {
-        _runningTotal = null;
-        _lastInput = null;
+        widget.appState.runningTotal = null;
+        widget.appState.lastInput = null;
         _addHistory(History(isClear: true));
       }
     });
   }
 
   _backSpace() {
-    if (_currentValue == "0" || _lastActionWasAFunction) return;
+    if (widget.appState.currentValue == "0" ||
+        widget.appState.lastActionWasAFunction) {
+      return;
+    }
 
-    _currentValue = _currentValue.substring(0, _currentValue.length - 1);
-    if (_currentValue.isEmpty) _currentValue = "0";
+    widget.appState.currentValue = widget.appState.currentValue
+        .substring(0, widget.appState.currentValue.length - 1);
+    if (widget.appState.currentValue.isEmpty) {
+      widget.appState.currentValue = "0";
+    }
 
-    _setCurrentDisplay();
+    setState(widget.appState.setCurrentDisplay);
   }
 
   _equals() {
-    if (_runningTotal == null) return;
+    if (widget.appState.runningTotal == null) return;
 
-    var historyDisplay = _runningTotal.toString();
+    var historyDisplay = widget.appState.runningTotal.toString();
 
     if (historyDisplay.endsWith(".0")) {
       historyDisplay = historyDisplay.substring(0, historyDisplay.length - 2);
     }
 
     setState(() {
-      _lastActionWasAFunction = true;
+      widget.appState.lastActionWasAFunction = true;
 
-      _addHistory(History(value: _runningTotal!, isTotal: true));
+      _addHistory(History(value: widget.appState.runningTotal!, isTotal: true));
 
-      _currentValue = historyDisplay;
+      widget.appState.currentValue = historyDisplay;
 
-      _setCurrentDisplay(false);
+      widget.appState.setCurrentDisplay();
 
-      _lastInput = historyDisplay.startsWith("-")
+      widget.appState.lastInput = historyDisplay.startsWith("-")
           ? historyDisplay.substring(1)
           : historyDisplay;
 
-      _runningTotal = null;
+      widget.appState.runningTotal = null;
 
       _addHistory(History(isClear: true, isTotal: true));
     });
@@ -354,45 +290,53 @@ class _MyHomePageState extends State<MyHomePage> {
 
   _add([String? input]) {
     // if the user did an add or subtract
-    _lastInput = input ?? this.input;
-    final currentValue = double.parse(_lastInput!);
+    widget.appState.lastInput = input ?? widget.appState.input;
+    final currentValue = double.parse(widget.appState.lastInput!);
 
     setState(() {
       // history
       _addHistory(History(value: currentValue));
 
       // running total
-      if (_runningTotal == null) {
-        _runningTotal = currentValue;
+      if (widget.appState.runningTotal == null) {
+        widget.appState.runningTotal = currentValue;
       } else {
-        _runningTotal = _round(currentValue + _runningTotal!);
+        widget.appState.runningTotal =
+            round(currentValue + widget.appState.runningTotal!);
       }
 
-      _currentValue = _runningTotal.toString();
+      widget.appState.currentValue = widget.appState.runningTotal.toString();
 
-      if (_currentValue.endsWith(".0")) {
-        _currentValue = _currentValue.substring(
+      if (widget.appState.currentValue.endsWith(".0")) {
+        widget.appState.currentValue = widget.appState.currentValue.substring(
           0,
-          _currentValue.length - 2,
+          widget.appState.currentValue.length - 2,
         );
       }
 
-      _setCurrentDisplay(false);
+      widget.appState.setCurrentDisplay();
 
-      _lastActionWasAFunction = true;
+      widget.appState.lastActionWasAFunction = true;
 
-      if (_lastInput!.startsWith("-")) {
-        _lastInput = _lastInput!.substring(1); // don't persist negative inputs
+      if (widget.appState.lastInput!.startsWith("-")) {
+        widget.appState.lastInput = widget.appState.lastInput!
+            .substring(1); // don't persist negative inputs
       }
     });
   }
 
   _subtract() {
-    if (input.startsWith("-")) {
-      _add(input.substring(1));
+    if (widget.appState.input.startsWith("-")) {
+      _add(widget.appState.input.substring(1));
     } else {
-      _add("-$input");
+      _add("-${widget.appState.input}");
     }
+  }
+
+  _addHistory(History history) async {
+    setState(() {
+      widget.appState.addHistory(history);
+    });
   }
 
   _onLongPressDisplay(BuildContext context, bool fromHistory) async {
@@ -401,136 +345,52 @@ class _MyHomePageState extends State<MyHomePage> {
     if (!mounted || !context.mounted) return;
 
     showModalBottomSheet(
-        context: context,
-        constraints: BoxConstraints.tightFor(height: fromHistory ? 75 : 150),
-        builder: (context) {
-          return Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (fromHistory)
-                MaterialTextButton(
-                  "Clear History",
-                  onPressed: () {
-                    Navigator.pop(context);
-                    setState(() {
-                      widget.appSettings.clearHistory();
-                    });
-                  },
-                  fontSize: 18,
-                ),
-              if (!fromHistory)
-                MaterialTextButton(
-                  "Copy Number to Clipboard",
-                  onPressed: () async {
-                    Navigator.pop(context);
-                    await Clipboard.setData(ClipboardData(text: _currentValue));
-                  },
-                  fontSize: 18,
-                ),
-              if (!fromHistory)
-                MaterialTextButton(
-                  "Paste Number from Clipboard",
-                  onPressed: clipboard?.text == null ||
-                          double.tryParse(clipboard!.text!) == null
-                      ? null
-                      : () {
-                          _currentValue = clipboard.text!;
+      context: context,
+      constraints: BoxConstraints.tightFor(height: fromHistory ? 75 : 150),
+      builder: (context) {
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (fromHistory)
+              MaterialTextButton(
+                "Clear History",
+                onPressed: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    widget.appState.clearHistory();
+                  });
+                },
+                fontSize: 18,
+              ),
+            if (!fromHistory)
+              MaterialTextButton(
+                "Copy Number to Clipboard",
+                onPressed: () async {
+                  Navigator.pop(context);
+                  await Clipboard.setData(
+                      ClipboardData(text: widget.appState.currentValue));
+                },
+                fontSize: 18,
+              ),
+            if (!fromHistory)
+              MaterialTextButton(
+                "Paste Number from Clipboard",
+                onPressed: clipboard?.text == null ||
+                        double.tryParse(clipboard!.text!) == null
+                    ? null
+                    : () {
+                        widget.appState.currentValue = clipboard.text!;
 
-                          _setCurrentDisplay();
+                        widget.appState.setCurrentDisplay();
 
-                          Navigator.pop(context);
-                        },
-                  fontSize: 18,
-                ),
-            ],
-          );
-        });
-  }
-
-  _addHistory(History history) async {
-    setState(() {
-      widget.appSettings.addHistory(history);
-    });
-  }
-
-  _editHistory(double value, int index) async {
-    double newValue = await showDialog(
-          context: context,
-          builder: (context) => EditHistoryDialog(initialValue: value),
-        ) ??
-        value;
-
-    var difference = newValue - value;
-
-    if (difference != 0) {
-      var updateRunningTotal = true;
-      var newTotal = _round((_runningTotal ?? 0) + difference);
-
-      setState(() {
-        widget.appSettings.history[index] = History(
-          value: newValue,
-          isTotal: widget.appSettings.history[index].isTotal,
-          isClear: widget.appSettings.history[index].isClear,
+                        Navigator.pop(context);
+                      },
+                fontSize: 18,
+              ),
+          ],
         );
-
-        for (++index; index < widget.appSettings.history.length; index++) {
-          if (widget.appSettings.history[index].isClear) {
-            updateRunningTotal = false;
-            break;
-          }
-          if (!widget.appSettings.history[index].isTotal) continue;
-
-          newTotal =
-              _round(difference + widget.appSettings.history[index].value);
-
-          widget.appSettings.history[index] = History(
-            value: newTotal,
-            isTotal: widget.appSettings.history[index].isTotal,
-            isClear: widget.appSettings.history[index].isClear,
-          );
-        }
-
-        if (updateRunningTotal) {
-          _runningTotal = newTotal;
-        }
-
-        if (updateRunningTotal ||
-            widget.appSettings.history[widget.appSettings.history.length - 1]
-                .isTotal) {
-          _currentValue = newTotal.toString();
-
-          if (_currentValue.endsWith(".0")) {
-            _currentValue = _currentValue.substring(
-              0,
-              _currentValue.length - 2,
-            );
-          }
-
-          _setCurrentDisplay(false);
-        }
-      });
-    }
-  }
-
-  double _round(double value, {double precision = 100000000}) {
-    return (value * precision).round() / precision;
-  }
-
-  _setCurrentDisplay([bool doSetState = true]) {
-    final numberParts = _currentValue.split(".");
-    final wholeNumber = int.parse(numberParts[0]);
-    final fractionPart = numberParts.length > 1 ? ".${numberParts[1]}" : "";
-
-    doSetCurrentDisplay() {
-      _currentDisplay =
-          "${NumberFormat.decimalPattern().format(wholeNumber)}$fractionPart";
-    }
-
-    if (doSetState) {
-      setState(doSetCurrentDisplay);
-    } else {
-      doSetCurrentDisplay();
-    }
+      },
+    );
   }
 }
