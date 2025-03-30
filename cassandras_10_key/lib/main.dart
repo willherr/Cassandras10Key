@@ -10,8 +10,17 @@ import 'package:intl/intl.dart';
 import 'material_text_button.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  DartPluginRegistrant.ensureInitialized();
+  try {
+    WidgetsFlutterBinding.ensureInitialized();
+  } catch (e) {
+    debugPrint(e.toString());
+  }
+  try {
+    DartPluginRegistrant.ensureInitialized();
+  } catch (e) {
+    debugPrint(e.toString());
+    ;
+  }
   runApp(MyApp(await AppSettings.get()));
 }
 
@@ -49,6 +58,7 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   final _scaffold = GlobalKey<ScaffoldState>();
 
+  String _currentValue = "0";
   String _currentDisplay = "0";
 
   double? _runningTotal;
@@ -58,7 +68,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   String get input => _lastInput != null && _lastActionWasAFunction
       ? _lastInput!
-      : _currentDisplay;
+      : _currentValue;
 
   bool get allowDualScreen =>
       MediaQuery.of(context).orientation == Orientation.landscape &&
@@ -280,18 +290,22 @@ class _MyHomePageState extends State<MyHomePage> {
       _lastActionWasAFunction = false;
     }
 
-    if (value == "." && _currentDisplay.contains(".")) return;
+    if (value == "." && _currentValue.contains(".")) return;
 
-    if (_currentDisplay == "0" && value != ".") {
-      _currentDisplay = "";
+    if (_currentValue == "0" && value != ".") {
+      _currentValue = value;
+    } else {
+      _currentValue += value;
     }
 
-    setState(() => _currentDisplay += value);
+    _setCurrentDisplay();
   }
 
   _clearNumber(bool andLastValue) {
     setState(() {
-      _currentDisplay = "0";
+      _currentValue = "0";
+
+      _setCurrentDisplay(false);
 
       if (andLastValue) {
         _runningTotal = null;
@@ -302,13 +316,12 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   _backSpace() {
-    if (_currentDisplay == "0" || _lastActionWasAFunction) return;
+    if (_currentValue == "0" || _lastActionWasAFunction) return;
 
-    setState(() {
-      _currentDisplay =
-          _currentDisplay.substring(0, _currentDisplay.length - 1);
-      if (_currentDisplay.isEmpty) _currentDisplay = "0";
-    });
+    _currentValue = _currentValue.substring(0, _currentValue.length - 1);
+    if (_currentValue.isEmpty) _currentValue = "0";
+
+    _setCurrentDisplay();
   }
 
   _equals() {
@@ -325,7 +338,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
       _addHistory(History(value: _runningTotal!, isTotal: true));
 
-      _currentDisplay = historyDisplay;
+      _currentValue = historyDisplay;
+
+      _setCurrentDisplay(false);
 
       _lastInput = historyDisplay.startsWith("-")
           ? historyDisplay.substring(1)
@@ -353,14 +368,16 @@ class _MyHomePageState extends State<MyHomePage> {
         _runningTotal = _round(currentValue + _runningTotal!);
       }
 
-      _currentDisplay = _runningTotal.toString();
+      _currentValue = _runningTotal.toString();
 
-      if (_currentDisplay.endsWith(".0")) {
-        _currentDisplay = _currentDisplay.substring(
+      if (_currentValue.endsWith(".0")) {
+        _currentValue = _currentValue.substring(
           0,
-          _currentDisplay.length - 2,
+          _currentValue.length - 2,
         );
       }
+
+      _setCurrentDisplay(false);
 
       _lastActionWasAFunction = true;
 
@@ -407,8 +424,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   "Copy Number to Clipboard",
                   onPressed: () async {
                     Navigator.pop(context);
-                    await Clipboard.setData(
-                        ClipboardData(text: _currentDisplay));
+                    await Clipboard.setData(ClipboardData(text: _currentValue));
                   },
                   fontSize: 18,
                 ),
@@ -419,7 +435,10 @@ class _MyHomePageState extends State<MyHomePage> {
                           double.tryParse(clipboard!.text!) == null
                       ? null
                       : () {
-                          setState(() => _currentDisplay = clipboard.text!);
+                          _currentValue = clipboard.text!;
+
+                          _setCurrentDisplay();
+
                           Navigator.pop(context);
                         },
                   fontSize: 18,
@@ -479,14 +498,16 @@ class _MyHomePageState extends State<MyHomePage> {
         if (updateRunningTotal ||
             widget.appSettings.history[widget.appSettings.history.length - 1]
                 .isTotal) {
-          _currentDisplay = newTotal.toString();
+          _currentValue = newTotal.toString();
 
-          if (_currentDisplay.endsWith(".0")) {
-            _currentDisplay = _currentDisplay.substring(
+          if (_currentValue.endsWith(".0")) {
+            _currentValue = _currentValue.substring(
               0,
-              _currentDisplay.length - 2,
+              _currentValue.length - 2,
             );
           }
+
+          _setCurrentDisplay(false);
         }
       });
     }
@@ -494,5 +515,22 @@ class _MyHomePageState extends State<MyHomePage> {
 
   double _round(double value, {double precision = 100000000}) {
     return (value * precision).round() / precision;
+  }
+
+  _setCurrentDisplay([bool doSetState = true]) {
+    final numberParts = _currentValue.split(".");
+    final wholeNumber = int.parse(numberParts[0]);
+    final fractionPart = numberParts.length > 1 ? ".${numberParts[1]}" : "";
+
+    doSetCurrentDisplay() {
+      _currentDisplay =
+          "${NumberFormat.decimalPattern().format(wholeNumber)}$fractionPart";
+    }
+
+    if (doSetState) {
+      setState(doSetCurrentDisplay);
+    } else {
+      doSetCurrentDisplay();
+    }
   }
 }

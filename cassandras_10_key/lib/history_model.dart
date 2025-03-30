@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'history_model.g.dart';
@@ -48,18 +49,12 @@ class History {
     }
 
     if (isTotal) {
-      var historyDisplay = value.toString();
-
-      if (historyDisplay.endsWith(".0")) {
-        historyDisplay = historyDisplay.substring(0, historyDisplay.length - 2);
-      }
-
       return Padding(
         padding: const EdgeInsets.all(8.0),
         child: SelectableText.rich(
           TextSpan(
             children: [
-              TextSpan(text: historyDisplay),
+              TextSpan(text: NumberFormat.decimalPattern().format(value)),
               TextSpan(
                 text: " T",
                 style: GoogleFonts.robotoMono(
@@ -75,14 +70,6 @@ class History {
         ),
       );
     } else {
-      var currentValueDisplay = value.toString();
-      if (currentValueDisplay.endsWith(".0")) {
-        currentValueDisplay = currentValueDisplay.substring(
-          0,
-          currentValueDisplay.length - 2,
-        );
-      }
-
       Widget history;
 
       if (value < 0) {
@@ -90,7 +77,7 @@ class History {
           text: TextSpan(
             children: [
               TextSpan(
-                text: currentValueDisplay.substring(1),
+                text: NumberFormat.decimalPattern().format(value).replaceFirst("-", ""),
                 style: const TextStyle(color: Colors.black),
               ),
               TextSpan(
@@ -111,7 +98,7 @@ class History {
           text: TextSpan(
             children: [
               TextSpan(
-                text: currentValueDisplay,
+                text: NumberFormat.decimalPattern().format(value),
                 style: const TextStyle(color: Colors.black),
               ),
               TextSpan(
