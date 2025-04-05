@@ -95,7 +95,7 @@ class _MyHomePageState extends State<MyHomePage> {
         warn: true,
         onPressed: () => _clearNumber(false),
       ),
-      MaterialTextButton("⬅", warn: true, onPressed: () => _backSpace()),
+      MaterialTextButton("⬅️", warn: true, onPressed: () => _backSpace()),
     ];
 
     final functionButtons = [
@@ -228,7 +228,7 @@ class _MyHomePageState extends State<MyHomePage> {
       widget.appState.currentValue += value;
     }
 
-    setState(widget.appState.setCurrentDisplay());
+    setState(() => widget.appState.setCurrentDisplay());
   }
 
   _clearNumber(bool andLastValue) {
@@ -257,7 +257,7 @@ class _MyHomePageState extends State<MyHomePage> {
       widget.appState.currentValue = "0";
     }
 
-    setState(widget.appState.setCurrentDisplay);
+    setState(() => widget.appState.setCurrentDisplay());
   }
 
   _equals() {
